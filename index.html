@@ -9,6 +9,12 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <!--
+      Use a relative path so the compiled bundle resolves correctly when the
+      app is served from nested routes or static hosts without a rewrite to
+      "/src". Vite will transform this reference to the built asset in
+      production, while the dev server still serves the module from /src.
+    -->
+    <script type="module" src="./src/main.jsx"></script>
   </body>
 </html>
