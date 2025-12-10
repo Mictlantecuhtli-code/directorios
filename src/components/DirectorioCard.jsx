@@ -48,7 +48,7 @@ export const DirectorioCard = ({ entrada, onEditar, onEliminar }) => {
           {/* Información de contacto */}
           <div className="mt-3 space-y-1.5">
             {entrada.email && (
-              
+              <a
                 href={`mailto:${entrada.email}`}
                 className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
               >
@@ -56,10 +56,10 @@ export const DirectorioCard = ({ entrada, onEditar, onEliminar }) => {
                 {entrada.email}
               </a>
             )}
-            
+
             <div className="flex flex-wrap gap-4">
               {entrada.telefono && (
-                
+                <a
                   href={`tel:${entrada.telefono}`}
                   className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
                 >
@@ -68,9 +68,9 @@ export const DirectorioCard = ({ entrada, onEditar, onEliminar }) => {
                   {entrada.extension && ` ext. ${entrada.extension}`}
                 </a>
               )}
-              
+
               {entrada.celular && (
-                
+                <a
                   href={`tel:${entrada.celular}`}
                   className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
                 >
