@@ -17,7 +17,7 @@ export const useDirectorio = (filtrosIniciales = {}) => {
 
     try {
       const { data, error: loadError } = await directorioService.getAll(filtros)
-      
+
       if (loadError) throw loadError
 
       setEntradas(data || [])
@@ -41,12 +41,12 @@ export const useDirectorio = (filtrosIniciales = {}) => {
 
     try {
       const { data, error: createError } = await directorioService.create(nuevaEntrada)
-      
+
       if (createError) throw createError
 
       // Actualizar lista local
       setEntradas(prev => [...prev, data])
-      
+
       return { success: true, data }
     } catch (err) {
       console.error('Error al crear entrada:', err)
@@ -64,14 +64,14 @@ export const useDirectorio = (filtrosIniciales = {}) => {
 
     try {
       const { data, error: updateError } = await directorioService.update(id, datosActualizados)
-      
+
       if (updateError) throw updateError
 
       // Actualizar lista local
-      setEntradas(prev => 
+      setEntradas(prev =>
         prev.map(entrada => entrada.id === id ? data : entrada)
       )
-      
+
       return { success: true, data }
     } catch (err) {
       console.error('Error al actualizar entrada:', err)
@@ -89,12 +89,12 @@ export const useDirectorio = (filtrosIniciales = {}) => {
 
     try {
       const { error: deleteError } = await directorioService.delete(id)
-      
+
       if (deleteError) throw deleteError
 
       // Remover de lista local
       setEntradas(prev => prev.filter(entrada => entrada.id !== id))
-      
+
       return { success: true }
     } catch (err) {
       console.error('Error al eliminar entrada:', err)
@@ -119,5 +119,36 @@ export const useDirectorio = (filtrosIniciales = {}) => {
   const exportarCSV = async () => {
     try {
       const { data, error: exportError } = await directorioService.exportarCSV()
-      
-      if (exportError
+
+      if (exportError) throw exportError
+
+      const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'directorio.csv'
+      link.click()
+      URL.revokeObjectURL(url)
+
+      return { success: true }
+    } catch (err) {
+      console.error('Error al exportar CSV:', err)
+      setError(err.message)
+      return { success: false, error: err.message }
+    }
+  }
+
+  return {
+    entradas,
+    loading,
+    error,
+    filtros,
+    cargarEntradas,
+    crear,
+    actualizar,
+    eliminar,
+    actualizarFiltros,
+    limpiarFiltros,
+    exportarCSV
+  }
+}
