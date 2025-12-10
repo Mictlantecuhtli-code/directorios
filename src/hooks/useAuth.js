@@ -33,23 +33,37 @@ export const useAuth = () => {
     return () => subscription.unsubscribe()
   }, [])
 
-  const checkSession = async () => {
-    try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+const checkSession = async () => {
+  try {
+    setLoading(true)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Error de sesión:', sessionError)
+      // Intentar refrescar la sesión
+      const { data: { session: refreshedSession }, error: refreshError } = 
+        await supabase.auth.refreshSession()
       
-      if (sessionError) throw sessionError
-
-      if (session?.user) {
-        await loadUserProfile(session.user)
+      if (refreshError) {
+        throw refreshError
+      }
+      
+      if (refreshedSession?.user) {
+        await loadUserProfile(refreshedSession.user)
       } else {
         setLoading(false)
       }
-    } catch (err) {
-      console.error('Error al verificar sesión:', err)
-      setError(err.message)
+    } else if (session?.user) {
+      await loadUserProfile(session.user)
+    } else {
       setLoading(false)
     }
+  } catch (err) {
+    console.error('Error al verificar sesión:', err)
+    setError(err.message)
+    setLoading(false)
   }
+}
 
   const loadUserProfile = async (authUser) => {
     try {
