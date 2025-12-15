@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
+
 /**
  * Hook personalizado para manejar autenticación y permisos
  */
