@@ -30,5 +30,3 @@ export const handleSupabaseError = (error) => {
   }
   return null
 }
-
-console.log('🔧 Supabase inicializado con configuración mínima')
