@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../services/supabase'
 
 /**
  * Hook personalizado para manejar autenticación y permisos
+ * CON CORRECCIONES PARA EVITAR TRABAS AL CAMBIAR DE VENTANA
  */
 export const useAuth = () => {
   const [user, setUser] = useState(null)
@@ -10,6 +11,10 @@ export const useAuth = () => {
   const [isDirector, setIsDirector] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  
+  // Refs para prevenir race conditions
+  const isCheckingSession = useRef(false)
+  const sessionCheckTimeout = useRef(null)
 
   useEffect(() => {
     // Obtener sesión inicial
@@ -19,9 +24,16 @@ export const useAuth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth event:', event)
+        
+        // Ignorar eventos duplicados mientras se está verificando
+        if (isCheckingSession.current) {
+          console.log('Ya se está verificando la sesión, ignorando evento')
+          return
+        }
+        
         if (session?.user) {
           await loadUserProfile(session.user)
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUser(null)
           setPerfil(null)
           setIsDirector(false)
@@ -30,40 +42,100 @@ export const useAuth = () => {
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Manejar visibilidad de la página (cuando cambias de ventana)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Página visible, verificando sesión...')
+        
+        // Debounce: esperar 500ms antes de verificar
+        clearTimeout(sessionCheckTimeout.current)
+        sessionCheckTimeout.current = setTimeout(() => {
+          refreshSessionIfNeeded()
+        }, 500)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearTimeout(sessionCheckTimeout.current)
+    }
   }, [])
 
-const checkSession = async () => {
-  try {
-    setLoading(true)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError) {
-      console.error('Error de sesión:', sessionError)
-      // Intentar refrescar la sesión
-      const { data: { session: refreshedSession }, error: refreshError } = 
-        await supabase.auth.refreshSession()
+  const checkSession = async () => {
+    // Prevenir múltiples verificaciones simultáneas
+    if (isCheckingSession.current) {
+      console.log('Ya hay una verificación en curso')
+      return
+    }
+
+    isCheckingSession.current = true
+
+    try {
+      setLoading(true)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      if (refreshError) {
-        throw refreshError
+      if (sessionError) {
+        console.error('Error de sesión:', sessionError)
+        throw sessionError
       }
       
-      if (refreshedSession?.user) {
-        await loadUserProfile(refreshedSession.user)
+      if (session?.user) {
+        await loadUserProfile(session.user)
       } else {
         setLoading(false)
       }
-    } else if (session?.user) {
-      await loadUserProfile(session.user)
-    } else {
+    } catch (err) {
+      console.error('Error al verificar sesión:', err)
+      setError(err.message)
       setLoading(false)
+    } finally {
+      isCheckingSession.current = false
     }
-  } catch (err) {
-    console.error('Error al verificar sesión:', err)
-    setError(err.message)
-    setLoading(false)
   }
-}
+
+  const refreshSessionIfNeeded = async () => {
+    // No intentar refrescar si ya se está verificando
+    if (isCheckingSession.current) {
+      return
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.log('No hay sesión activa')
+        return
+      }
+
+      // Verificar si el token está cerca de expirar (menos de 5 minutos)
+      const expiresAt = session.expires_at
+      const now = Math.floor(Date.now() / 1000)
+      const timeUntilExpiry = expiresAt - now
+      
+      console.log(`Token expira en ${timeUntilExpiry} segundos`)
+
+      if (timeUntilExpiry < 300) { // Menos de 5 minutos
+        console.log('Token cerca de expirar, refrescando...')
+        
+        const { data: { session: refreshedSession }, error: refreshError } = 
+          await supabase.auth.refreshSession()
+        
+        if (refreshError) {
+          console.error('Error al refrescar sesión:', refreshError)
+        } else if (refreshedSession?.user) {
+          console.log('Sesión refrescada exitosamente')
+          await loadUserProfile(refreshedSession.user)
+        }
+      } else {
+        console.log('Token aún válido, no es necesario refrescar')
+      }
+    } catch (err) {
+      console.error('Error al verificar/refrescar sesión:', err)
+    }
+  }
 
   const loadUserProfile = async (authUser) => {
     try {
@@ -78,7 +150,6 @@ const checkSession = async () => {
         .single()
 
       if (perfilError) {
-        // Si no existe el perfil, el usuario no tiene acceso
         console.error('Perfil no encontrado o inactivo')
         setPerfil(null)
         setIsDirector(false)
