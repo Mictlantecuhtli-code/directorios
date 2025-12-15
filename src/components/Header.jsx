@@ -1,4 +1,5 @@
 import { LogOut, User } from 'lucide-react'
+import AifaLogo from '/assets/AIFA_logo.png'
 import { useAuth } from '../hooks/useAuth'
 
 export const Header = () => {
@@ -16,9 +17,12 @@ export const Header = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo y título */}
           <div className="flex items-center">
-            <h1 className="text-xl font-bold text-gray-900">
-              Directorio AIFA
-            </h1>
+            <img
+              src={AifaLogo}
+              alt="Logo AIFA"
+              className="h-10 w-auto object-contain"
+            />
+            <span className="sr-only">Directorio AIFA</span>
           </div>
 
           {/* Info de usuario */}

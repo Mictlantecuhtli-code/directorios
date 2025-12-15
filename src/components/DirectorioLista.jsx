@@ -92,7 +92,7 @@ export const DirectorioLista = () => {
       {/* Header con acciones */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Directorio</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Directorio AIFA</h2>
           <p className="text-sm text-gray-600 mt-1">
             {entradas.length} {entradas.length === 1 ? 'entrada' : 'entradas'}
           </p>

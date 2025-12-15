@@ -13,7 +13,7 @@ export const BuscadorDirectorio = ({ onBuscar, onLimpiar, filtrosActuales = {} }
     e.preventDefault()
     onBuscar({
       busqueda: busqueda.trim(),
-      area_id: areaSeleccionada || null
+      area_id: areaSeleccionada !== '' ? Number(areaSeleccionada) : null
     })
   }
 
@@ -85,7 +85,10 @@ export const BuscadorDirectorio = ({ onBuscar, onLimpiar, filtrosActuales = {} }
                 <select
                   id="area"
                   value={areaSeleccionada}
-                  onChange={(e) => setAreaSeleccionada(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setAreaSeleccionada(value === '' ? '' : Number(value))
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Todas las áreas</option>
@@ -109,7 +112,7 @@ export const BuscadorDirectorio = ({ onBuscar, onLimpiar, filtrosActuales = {} }
               Búsqueda: "{busqueda}"
             </span>
           )}
-          {areaSeleccionada && (
+          {areaSeleccionada !== '' && (
             <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
               Área: {areas.find(a => a.id === areaSeleccionada)?.nombre}
             </span>
