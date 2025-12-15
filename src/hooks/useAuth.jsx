@@ -14,8 +14,6 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = useCallback(async (authUser) => {
     try {
-      console.log('👤 Cargando perfil para:', authUser.email)
-
       const { data: perfilData, error: perfilError } = await supabase
         .from('perfiles')
         .select('*')
@@ -33,8 +31,6 @@ export const AuthProvider = ({ children }) => {
           error: 'Usuario no autorizado para acceder al sistema'
         })
       } else {
-        console.log('✅ Perfil cargado:', perfilData.nombre_completo, '| Rol:', perfilData.rol_principal)
-
         const isDir = perfilData.rol_principal === 'DIRECTOR'
 
         setAuthState({
@@ -44,8 +40,6 @@ export const AuthProvider = ({ children }) => {
           loading: false,
           error: null
         })
-
-        console.log('🎯 Estado actualizado - isDirector:', isDir)
       }
     } catch (err) {
       console.error('💥 Error al cargar perfil:', err)
@@ -59,7 +53,6 @@ export const AuthProvider = ({ children }) => {
 
   const checkSession = useCallback(async () => {
     try {
-      console.log('🔍 Verificando sesión...')
       setAuthState(prev => ({ ...prev, loading: true }))
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
@@ -70,10 +63,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (session?.user) {
-        console.log('✅ Sesión encontrada')
         await loadUserProfile(session.user)
       } else {
-        console.log('⚠️ No hay sesión')
         setAuthState(prev => ({ ...prev, loading: false }))
       }
     } catch (err) {
@@ -88,7 +79,6 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = useCallback(async (email, password) => {
     try {
-      console.log('🔐 Iniciando sesión con:', email)
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -100,8 +90,6 @@ export const AuthProvider = ({ children }) => {
         console.error('❌ Error de login:', signInError)
         throw signInError
       }
-
-      console.log('✅ Login exitoso para:', data.user.email)
 
       if (data.user) {
         await loadUserProfile(data.user)
@@ -121,7 +109,6 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = useCallback(async () => {
     try {
-      console.log('👋 Cerrando sesión...')
       setAuthState(prev => ({ ...prev, loading: true }))
 
       await supabase.auth.signOut()
@@ -133,8 +120,6 @@ export const AuthProvider = ({ children }) => {
         loading: false,
         error: null
       })
-
-      console.log('✅ Sesión cerrada')
       return { success: true }
     } catch (err) {
       console.error('❌ Error al cerrar sesión:', err)
@@ -148,7 +133,6 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   useEffect(() => {
-    console.log('🎯 useAuth montado')
     checkSession()
   }, [checkSession])
 
@@ -169,14 +153,6 @@ export const AuthProvider = ({ children }) => {
   }, [loadUserProfile])
 
   useEffect(() => {
-    console.log('📊 Estado Auth actualizado:', {
-      hasUser: !!authState.user,
-      hasPerfil: !!authState.perfil,
-      isDirector: authState.isDirector,
-      loading: authState.loading,
-      isAuthenticated: !!(authState.user && authState.perfil),
-      hasAccess: authState.isDirector
-    })
   }, [authState])
 
   const value = useMemo(() => ({
