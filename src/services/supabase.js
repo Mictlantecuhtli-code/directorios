@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -11,10 +12,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    // Agregar estas líneas nuevas:
     storage: window.localStorage,
     storageKey: 'supabase.auth.token',
-    flowType: 'pkce'
+    // Removido flowType: 'pkce' que causaba problemas
+  },
+  global: {
+    headers: {
+      'x-client-info': 'directorio-aifa@1.0.0'
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  // Configuración de reintentos
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 })
 
@@ -30,3 +44,12 @@ export const handleSupabaseError = (error) => {
   }
   return null
 }
+
+// Monitorear estado de la conexión
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'TOKEN_REFRESHED') {
+    console.log('Token refrescado automáticamente')
+  } else if (event === 'SIGNED_OUT') {
+    console.log('Usuario cerró sesión')
+  }
+})
