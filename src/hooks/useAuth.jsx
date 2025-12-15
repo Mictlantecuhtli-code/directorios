@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../services/supabase'
 
-/**
- * VERSIÓN QUE FUERZA RE-RENDER DESPUÉS DEL LOGIN
- */
-export const useAuth = () => {
+const AuthContext = createContext(null)
+
+export const AuthProvider = ({ children }) => {
   const [authState, setAuthState] = useState({
     user: null,
     perfil: null,
@@ -13,41 +12,7 @@ export const useAuth = () => {
     error: null
   })
 
-  useEffect(() => {
-    console.log('🎯 useAuth montado')
-    checkSession()
-  }, [])
-
-  const checkSession = async () => {
-    try {
-      console.log('🔍 Verificando sesión...')
-      setAuthState(prev => ({ ...prev, loading: true }))
-      
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('❌ Error de sesión:', sessionError)
-        throw sessionError
-      }
-      
-      if (session?.user) {
-        console.log('✅ Sesión encontrada')
-        await loadUserProfile(session.user)
-      } else {
-        console.log('⚠️ No hay sesión')
-        setAuthState(prev => ({ ...prev, loading: false }))
-      }
-    } catch (err) {
-      console.error('💥 Error en checkSession:', err)
-      setAuthState(prev => ({ 
-        ...prev, 
-        error: err.message, 
-        loading: false 
-      }))
-    }
-  }
-
-  const loadUserProfile = async (authUser) => {
+  const loadUserProfile = useCallback(async (authUser) => {
     try {
       console.log('👤 Cargando perfil para:', authUser.email)
 
@@ -69,10 +34,9 @@ export const useAuth = () => {
         })
       } else {
         console.log('✅ Perfil cargado:', perfilData.nombre_completo, '| Rol:', perfilData.rol_principal)
-        
+
         const isDir = perfilData.rol_principal === 'DIRECTOR'
-        
-        // ACTUALIZAR TODO EL ESTADO DE UNA VEZ
+
         setAuthState({
           user: authUser,
           perfil: perfilData,
@@ -80,20 +44,49 @@ export const useAuth = () => {
           loading: false,
           error: null
         })
-        
+
         console.log('🎯 Estado actualizado - isDirector:', isDir)
       }
     } catch (err) {
       console.error('💥 Error al cargar perfil:', err)
-      setAuthState(prev => ({ 
-        ...prev, 
-        error: err.message, 
-        loading: false 
+      setAuthState(prev => ({
+        ...prev,
+        error: err.message,
+        loading: false
       }))
     }
-  }
+  }, [])
 
-  const signIn = async (email, password) => {
+  const checkSession = useCallback(async () => {
+    try {
+      console.log('🔍 Verificando sesión...')
+      setAuthState(prev => ({ ...prev, loading: true }))
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('❌ Error de sesión:', sessionError)
+        throw sessionError
+      }
+
+      if (session?.user) {
+        console.log('✅ Sesión encontrada')
+        await loadUserProfile(session.user)
+      } else {
+        console.log('⚠️ No hay sesión')
+        setAuthState(prev => ({ ...prev, loading: false }))
+      }
+    } catch (err) {
+      console.error('💥 Error en checkSession:', err)
+      setAuthState(prev => ({
+        ...prev,
+        error: err.message,
+        loading: false
+      }))
+    }
+  }, [loadUserProfile])
+
+  const signIn = useCallback(async (email, password) => {
     try {
       console.log('🔐 Iniciando sesión con:', email)
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
@@ -109,8 +102,7 @@ export const useAuth = () => {
       }
 
       console.log('✅ Login exitoso para:', data.user.email)
-      
-      // Cargar perfil inmediatamente
+
       if (data.user) {
         await loadUserProfile(data.user)
       }
@@ -118,20 +110,20 @@ export const useAuth = () => {
       return { success: true, data }
     } catch (err) {
       console.error('❌ Error al iniciar sesión:', err)
-      setAuthState(prev => ({ 
-        ...prev, 
-        error: err.message, 
-        loading: false 
+      setAuthState(prev => ({
+        ...prev,
+        error: err.message,
+        loading: false
       }))
       return { success: false, error: err.message }
     }
-  }
+  }, [loadUserProfile])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       console.log('👋 Cerrando sesión...')
       setAuthState(prev => ({ ...prev, loading: true }))
-      
+
       await supabase.auth.signOut()
 
       setAuthState({
@@ -146,16 +138,36 @@ export const useAuth = () => {
       return { success: true }
     } catch (err) {
       console.error('❌ Error al cerrar sesión:', err)
-      setAuthState(prev => ({ 
-        ...prev, 
-        error: err.message, 
-        loading: false 
+      setAuthState(prev => ({
+        ...prev,
+        error: err.message,
+        loading: false
       }))
       return { success: false, error: err.message }
     }
-  }
+  }, [])
 
-  // Log cada vez que cambia el estado
+  useEffect(() => {
+    console.log('🎯 useAuth montado')
+    checkSession()
+  }, [checkSession])
+
+  useEffect(() => {
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUserProfile(session.user)
+      } else {
+        setAuthState(prev => ({ ...prev, user: null, perfil: null, isDirector: false, loading: false }))
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [loadUserProfile])
+
   useEffect(() => {
     console.log('📊 Estado Auth actualizado:', {
       hasUser: !!authState.user,
@@ -167,7 +179,7 @@ export const useAuth = () => {
     })
   }, [authState])
 
-  return {
+  const value = useMemo(() => ({
     user: authState.user,
     perfil: authState.perfil,
     isDirector: authState.isDirector,
@@ -177,5 +189,21 @@ export const useAuth = () => {
     signOut,
     isAuthenticated: !!(authState.user && authState.perfil),
     hasAccess: authState.isDirector
+  }), [authState, signIn, signOut])
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de un AuthProvider')
   }
+
+  return context
 }
