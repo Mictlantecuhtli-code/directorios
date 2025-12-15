@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 import AifaLogo from '../assets/AIFA_logo.png'
 
+
 export const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
