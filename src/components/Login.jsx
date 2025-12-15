@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
 import AifaLogo from '../assets/AIFA_logo.png'
 
-
 export const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +35,7 @@ export const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         {/* Logo y título */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8">  
           <div className="inline-flex items-center justify-center w-24 h-24 mb-4">
             <img
               src={AifaLogo}
@@ -97,7 +96,7 @@ export const Login = () => {
               </button>
             </div>
           </div>
-
+            
           {/* Error messages */}
           {(localError || error) && (
             <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
