@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { AlertCircle, Eye, EyeOff } from 'lucide-react'
-import AifaLogo from '../assets/AIFA_logo.png'
+import AifaLogo from '/assets/AIFA_logo.png'
 
 export const Login = () => {
   const [email, setEmail] = useState('')
