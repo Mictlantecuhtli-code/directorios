@@ -7,28 +7,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Faltan las credenciales de Supabase en el archivo .env')
 }
 
+// CONFIGURACIÓN MÍNIMA - Sin features avanzadas que puedan causar problemas
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
+    autoRefreshToken: false, // DESACTIVADO para diagnóstico
     persistSession: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // DESACTIVADO
     storage: window.localStorage,
-    storageKey: 'supabase.auth.token',
-    // Removido flowType: 'pkce' que causaba problemas
-  },
-  global: {
-    headers: {
-      'x-client-info': 'directorio-aifa@1.0.0'
-    }
-  },
-  db: {
-    schema: 'public'
-  },
-  // Configuración de reintentos
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
+    storageKey: 'supabase.auth.token'
   }
 })
 
@@ -45,11 +31,4 @@ export const handleSupabaseError = (error) => {
   return null
 }
 
-// Monitorear estado de la conexión
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'TOKEN_REFRESHED') {
-    console.log('Token refrescado automáticamente')
-  } else if (event === 'SIGNED_OUT') {
-    console.log('Usuario cerró sesión')
-  }
-})
+console.log('🔧 Supabase inicializado con configuración mínima')
