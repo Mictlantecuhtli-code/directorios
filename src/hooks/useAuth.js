@@ -2,28 +2,26 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../services/supabase'
 
 /**
- * VERSIÓN ULTRA-SIMPLIFICADA PARA DIAGNÓSTICO
- * Esta versión elimina TODOS los listeners innecesarios
+ * VERSIÓN QUE FUERZA RE-RENDER DESPUÉS DEL LOGIN
  */
 export const useAuth = () => {
-  const [user, setUser] = useState(null)
-  const [perfil, setPerfil] = useState(null)
-  const [isDirector, setIsDirector] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [authState, setAuthState] = useState({
+    user: null,
+    perfil: null,
+    isDirector: false,
+    loading: true,
+    error: null
+  })
 
   useEffect(() => {
-    // Solo verificar sesión UNA VEZ al montar
+    console.log('🎯 useAuth montado')
     checkSession()
-    
-    // NO escuchamos onAuthStateChange
-    // Esto elimina el 90% de los problemas
-  }, []) // Array vacío = solo se ejecuta una vez
+  }, [])
 
   const checkSession = async () => {
     try {
       console.log('🔍 Verificando sesión...')
-      setLoading(true)
+      setAuthState(prev => ({ ...prev, loading: true }))
       
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
@@ -37,19 +35,21 @@ export const useAuth = () => {
         await loadUserProfile(session.user)
       } else {
         console.log('⚠️ No hay sesión')
-        setLoading(false)
+        setAuthState(prev => ({ ...prev, loading: false }))
       }
     } catch (err) {
       console.error('💥 Error en checkSession:', err)
-      setError(err.message)
-      setLoading(false)
+      setAuthState(prev => ({ 
+        ...prev, 
+        error: err.message, 
+        loading: false 
+      }))
     }
   }
 
   const loadUserProfile = async (authUser) => {
     try {
-      console.log('👤 Cargando perfil...')
-      setUser(authUser)
+      console.log('👤 Cargando perfil para:', authUser.email)
 
       const { data: perfilData, error: perfilError } = await supabase
         .from('perfiles')
@@ -59,40 +59,58 @@ export const useAuth = () => {
         .single()
 
       if (perfilError) {
-        console.error('❌ Perfil no encontrado')
-        setPerfil(null)
-        setIsDirector(false)
-        setError('Usuario no autorizado para acceder al sistema')
+        console.error('❌ Error al cargar perfil:', perfilError)
+        setAuthState({
+          user: authUser,
+          perfil: null,
+          isDirector: false,
+          loading: false,
+          error: 'Usuario no autorizado para acceder al sistema'
+        })
       } else {
-        console.log('✅ Perfil cargado:', perfilData.nombre_completo)
-        setPerfil(perfilData)
-        setIsDirector(perfilData.rol_principal === 'DIRECTOR')
-        setError(null)
+        console.log('✅ Perfil cargado:', perfilData.nombre_completo, '| Rol:', perfilData.rol_principal)
+        
+        const isDir = perfilData.rol_principal === 'DIRECTOR'
+        
+        // ACTUALIZAR TODO EL ESTADO DE UNA VEZ
+        setAuthState({
+          user: authUser,
+          perfil: perfilData,
+          isDirector: isDir,
+          loading: false,
+          error: null
+        })
+        
+        console.log('🎯 Estado actualizado - isDirector:', isDir)
       }
     } catch (err) {
       console.error('💥 Error al cargar perfil:', err)
-      setError(err.message)
-    } finally {
-      setLoading(false)
+      setAuthState(prev => ({ 
+        ...prev, 
+        error: err.message, 
+        loading: false 
+      }))
     }
   }
 
   const signIn = async (email, password) => {
     try {
-      console.log('🔐 Iniciando sesión...')
-      setLoading(true)
-      setError(null)
+      console.log('🔐 Iniciando sesión con:', email)
+      setAuthState(prev => ({ ...prev, loading: true, error: null }))
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
-      if (signInError) throw signInError
+      if (signInError) {
+        console.error('❌ Error de login:', signInError)
+        throw signInError
+      }
 
-      console.log('✅ Login exitoso')
+      console.log('✅ Login exitoso para:', data.user.email)
       
-      // Cargar perfil manualmente después del login
+      // Cargar perfil inmediatamente
       if (data.user) {
         await loadUserProfile(data.user)
       }
@@ -100,47 +118,64 @@ export const useAuth = () => {
       return { success: true, data }
     } catch (err) {
       console.error('❌ Error al iniciar sesión:', err)
-      setError(err.message)
+      setAuthState(prev => ({ 
+        ...prev, 
+        error: err.message, 
+        loading: false 
+      }))
       return { success: false, error: err.message }
-    } finally {
-      setLoading(false)
     }
   }
 
   const signOut = async () => {
     try {
       console.log('👋 Cerrando sesión...')
-      setLoading(true)
+      setAuthState(prev => ({ ...prev, loading: true }))
       
-      const { error: signOutError } = await supabase.auth.signOut()
-      
-      if (signOutError) throw signOutError
+      await supabase.auth.signOut()
 
-      setUser(null)
-      setPerfil(null)
-      setIsDirector(false)
-      setError(null)
+      setAuthState({
+        user: null,
+        perfil: null,
+        isDirector: false,
+        loading: false,
+        error: null
+      })
 
       console.log('✅ Sesión cerrada')
       return { success: true }
     } catch (err) {
       console.error('❌ Error al cerrar sesión:', err)
-      setError(err.message)
+      setAuthState(prev => ({ 
+        ...prev, 
+        error: err.message, 
+        loading: false 
+      }))
       return { success: false, error: err.message }
-    } finally {
-      setLoading(false)
     }
   }
 
+  // Log cada vez que cambia el estado
+  useEffect(() => {
+    console.log('📊 Estado Auth actualizado:', {
+      hasUser: !!authState.user,
+      hasPerfil: !!authState.perfil,
+      isDirector: authState.isDirector,
+      loading: authState.loading,
+      isAuthenticated: !!(authState.user && authState.perfil),
+      hasAccess: authState.isDirector
+    })
+  }, [authState])
+
   return {
-    user,
-    perfil,
-    isDirector,
-    loading,
-    error,
+    user: authState.user,
+    perfil: authState.perfil,
+    isDirector: authState.isDirector,
+    loading: authState.loading,
+    error: authState.error,
     signIn,
     signOut,
-    isAuthenticated: !!user && !!perfil,
-    hasAccess: isDirector
+    isAuthenticated: !!(authState.user && authState.perfil),
+    hasAccess: authState.isDirector
   }
 }
